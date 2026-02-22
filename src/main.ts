@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell } from 'electron';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
@@ -55,7 +56,7 @@ function initializeThreadPool() {
         }
 
         workerPath = path.resolve(workerPath);
-        pool = workerpool.pool(workerPath, { workerType: 'thread' });      
+        pool = workerpool.pool(workerPath, { workerType: 'thread' });
 
         console.log('线程池初始化成功，工作器路径:', workerPath);
     } catch (error) {
@@ -371,25 +372,25 @@ function registerIpcHandlers() {
             if (!fs.existsSync(fromPath)) {
                 throw new Error('源文件不存在');
             }
-            
+
             // 如果目标路径是文件夹，则将文件移动到文件夹内
             let finalToPath = toPath;
             if (fs.existsSync(toPath) && fs.statSync(toPath).isDirectory()) {
                 const fileName = path.basename(fromPath);
                 finalToPath = path.join(toPath, fileName);
             }
-            
+
             // 检查目标文件是否已存在
             if (fs.existsSync(finalToPath)) {
                 throw new Error('目标文件已存在');
             }
-            
+
             // 确保目标目录存在
             const toDirPath = path.dirname(finalToPath);
             if (!fs.existsSync(toDirPath)) {
                 fs.mkdirSync(toDirPath, { recursive: true });
             }
-            
+
             fs.renameSync(fromPath, finalToPath);
             return true;
         } catch (error) {
@@ -405,22 +406,22 @@ function registerIpcHandlers() {
             const dirPath = path.dirname(filePath);
             // 构建新的文件路径
             const newPath = path.join(dirPath, newName);
-            
+
             // 检查新路径是否与原路径相同
             if (newPath === filePath) {
                 return { success: true, newPath: filePath };
             }
-            
+
             // 检查新文件名是否为空
             if (!newName.trim()) {
                 return { success: false, error: '文件名不能为空' };
             }
-            
+
             // 检查新文件是否已存在
             if (fs.existsSync(newPath)) {
                 return { success: false, error: '文件名已存在' };
             }
-            
+
             // 重命名文件
             fs.renameSync(filePath, newPath);
             return { success: true, newPath };
@@ -514,6 +515,59 @@ function registerIpcHandlers() {
             return { success: false, error: '无法找到对应的窗口' };
         } catch (error) {
             console.error('打开开发者工具失败:', error);
+            return { success: false, error: (error as Error).message };
+        }
+    });
+
+    // 打开终端
+    ipcMain.handle('openTerminal', async (event, directory?: string) => {
+        try {
+            let targetDir = directory;
+
+            // 如果还是没有目录，使用用户主目录
+            if (!targetDir) {
+                targetDir = app.getPath('home');
+            }
+
+            // 检查目录是否存在
+            if (!fs.existsSync(targetDir)) {
+                targetDir = app.getPath('home');
+            }
+
+            // 文件若是目录，直接用，若是文件，取其目录
+            if (fs.statSync(targetDir).isFile()) {
+                targetDir = path.dirname(targetDir);
+            }
+
+            // 根据不同平台打开终端
+            const platform = process.platform;
+            if (platform === 'darwin') {
+                // macOS: 直接用open命令打开Terminal并定位到目录
+                spawn('open', ['-a', 'Terminal', targetDir]);
+            } else if (platform === 'win32') {
+                // Windows: 优先打开PowerShell
+                try {
+                    spawn('powershell.exe', [], { cwd: targetDir, shell: true });
+                } catch (e) {
+                    // 如果PowerShell不可用，回退到cmd
+                    spawn('cmd.exe', ['/c', 'start', 'cmd.exe'], { cwd: targetDir, shell: true });
+                }
+            } else {
+                // Linux: 尝试打开常用终端
+                const terminals = ['gnome-terminal', 'konsole', 'xterm', 'xfce4-terminal'];
+                for (const term of terminals) {
+                    try {
+                        spawn(term, [], { cwd: targetDir });
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('打开终端失败:', error);
             return { success: false, error: (error as Error).message };
         }
     });
@@ -622,10 +676,10 @@ const createWindow = (folderPath?: string) => {
     // 安全设置：阻止外部链接加载
     newWindow.webContents.on('will-navigate', (event, navigationUrl) => {
         const parsedUrl = new URL(navigationUrl);
-        
+
         // 只允许加载本地文件或开发服务器
-        if (parsedUrl.protocol !== 'file:' && 
-            parsedUrl.host !== 'localhost' && 
+        if (parsedUrl.protocol !== 'file:' &&
+            parsedUrl.host !== 'localhost' &&
             parsedUrl.host !== '127.0.0.1' &&
             !navigationUrl.startsWith(MAIN_WINDOW_VITE_DEV_SERVER_URL || '')) {
             event.preventDefault();
@@ -637,8 +691,8 @@ const createWindow = (folderPath?: string) => {
     newWindow.webContents.setWindowOpenHandler(({ url }) => {
         // 只允许打开本地文件或开发服务器
         const parsedUrl = new URL(url);
-        if (parsedUrl.protocol !== 'file:' && 
-            parsedUrl.host !== 'localhost' && 
+        if (parsedUrl.protocol !== 'file:' &&
+            parsedUrl.host !== 'localhost' &&
             parsedUrl.host !== '127.0.0.1' &&
             !url.startsWith(MAIN_WINDOW_VITE_DEV_SERVER_URL || '')) {
             console.warn('阻止新窗口打开外部链接:', url);

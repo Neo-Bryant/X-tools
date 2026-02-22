@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Descriptions, message, Modal, Space, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, ReloadOutlined, SettingOutlined, CodeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ReloadOutlined, SettingOutlined, CodeOutlined, ConsoleSqlOutlined } from '@ant-design/icons';
 import { clearAllLocalStorage, formatBytes, getLocalStorageInfo } from '../../utils/storageUtils';
 import { ToolWindow } from './toolWindow';
+import { useAppContext } from '../../contexts/AppContext';
 
 const { Text, Paragraph } = Typography;
 
@@ -10,6 +11,7 @@ const { Text, Paragraph } = Typography;
  * 设置面板组件
  */
 const SettingsPanel: React.FC = () => {
+    const { currentFile, currentFolder } = useAppContext();
     const [storageInfo, setStorageInfo] = useState(getLocalStorageInfo());
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
@@ -103,6 +105,25 @@ const SettingsPanel: React.FC = () => {
         } catch (error) {
             console.error('打开开发者工具时出错:', error);
             message.error('打开开发者工具失败', 3);
+        }
+    };
+
+    // 打开终端
+    const handleOpenTerminal = async () => {
+        try {
+            if (window.electronAPI && window.electronAPI.openTerminal) {
+                const result = await window.electronAPI.openTerminal(currentFile || currentFolder);
+                if (result.success) {
+                    message.success('终端已打开', 3);
+                } else {
+                    message.error(`打开终端失败: ${result.error}`, 3);
+                }
+            } else {
+                message.warning('此功能需要在 Electron 应用中使用', 3);
+            }
+        } catch (error) {
+            console.error('打开终端时出错:', error);
+            message.error('打开终端失败', 3);
         }
     };
 
@@ -212,10 +233,21 @@ const SettingsPanel: React.FC = () => {
                             size="small"
                             icon={<CodeOutlined />}
                             onClick={handleOpenDevTools}
-                            type="primary"
+                            type="default"
                             style={{ width: '100%' }}
                         >
                             打开开发者工具
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="打开系统终端，以当前目录为工作目录">
+                        <Button
+                            size="small"
+                            icon={<ConsoleSqlOutlined />}
+                            onClick={handleOpenTerminal}
+                            type="default"
+                            style={{ width: '100%' }}
+                        >
+                            打开终端
                         </Button>
                     </Tooltip>
                 </Space>
