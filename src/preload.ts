@@ -1,6 +1,6 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { FileNode, OfficeJsonData } from './types/index';
 import { Config } from './utils/config';
 import { OfficeParserConfig } from './office/types';
@@ -44,6 +44,8 @@ interface ElectronAPI {
     removeFile: (filePath: string) => Promise<boolean>;
     moveFile: (fromPath: string, toPath: string) => Promise<boolean>;
     renameFile: (filePath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+    importFile: (sourcePath: string, targetDir: string) => Promise<{ success: boolean; targetPath?: string; error?: string }>;
+    getFilePath: (file: File) => string;
 
     // === 应用信息 ===
     getAppVersion: () => Promise<string>;
@@ -108,6 +110,11 @@ const electronAPI: ElectronAPI = {
     removeFile: (filePath: string) => ipcRenderer.invoke('removeFile', filePath) as Promise<boolean>,
     moveFile: (fromPath: string, toPath: string) => ipcRenderer.invoke('moveFile', fromPath, toPath) as Promise<boolean>,
     renameFile: (filePath: string, newName: string) => ipcRenderer.invoke('renameFile', filePath, newName) as Promise<{ success: boolean; newPath?: string; error?: string }>,
+    importFile: (sourcePath: string, targetDir: string) => ipcRenderer.invoke('importFile', sourcePath, targetDir) as Promise<{ success: boolean; targetPath?: string; error?: string }>,
+    getFilePath: (file: File) => {
+        // 使用 webUtils.getPathForFile 获取 File 对象对应的文件系统路径
+        return webUtils.getPathForFile(file) as string;
+    },
 
     // 应用信息
     getAppVersion: () => ipcRenderer.invoke('getAppVersion') as Promise<string>,

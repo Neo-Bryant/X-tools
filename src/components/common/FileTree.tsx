@@ -32,6 +32,7 @@ export const FileTree: React.FC = () => {
     const [searchLoading, setSearchLoading] = useState<boolean>(false);
     const [searchResultCount, setSearchResultCount] = useState<number>(0);
     const [loadedKeys, setLoadedKeys] = useState<string[]>([]);
+    const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
 
     // 使用 ref 来避免闭包陷阱
     const currentFileRef = useRef<string | null>(null);
@@ -824,7 +825,141 @@ export const FileTree: React.FC = () => {
                 )}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            <div
+                style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    position: 'relative',
+                    backgroundColor: isDraggingOver ? 'rgba(24, 144, 255, 0.05)' : 'transparent',
+                    border: isDraggingOver ? '2px dashed #1890ff' : 'none',
+                    transition: 'all 0.2s ease',
+                    borderRadius: isDraggingOver ? '8px' : '0'
+                }}
+                onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingOver(true);
+                }}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }}
+                onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 只在真正离开元素时才取消状态
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setIsDraggingOver(false);
+                    }
+                }}
+                onDrop={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingOver(false);
+
+                    const files = Array.from(e.dataTransfer.files);
+                    if (files.length === 0) return;
+
+                    // 默认拖到当前文件夹根目录
+                    const targetFolder = currentFolder;
+                    if (!targetFolder) {
+                        message.error('没有打开的文件夹');
+                        return;
+                    }
+
+                    try {
+                        let fileCount = 0;
+                        let folderCount = 0;
+                        const errorMessages: string[] = [];
+
+                        for (const file of files) {
+                            // 使用 webUtils.getPathForFile 获取文件路径
+                            const filePath = window.electronAPI.getFilePath(file);
+                            if (!filePath) {
+                                errorMessages.push(`${file.name} 无法获取路径`);
+                                continue;
+                            }
+
+                            const result = await window.electronAPI.importFile(filePath, targetFolder);
+                            if (result.success) {
+                                // 根据导入结果判断是文件还是文件夹
+                                if (result.targetPath) {
+                                    try {
+                                        const stats = await window.electronAPI.getFileInfo(result.targetPath);
+                                        if (stats && stats.isDirectory) {
+                                            folderCount++;
+                                        } else {
+                                            fileCount++;
+                                        }
+                                    } catch (error) {
+                                        fileCount++; // 默认当作文件
+                                    }
+                                } else {
+                                    fileCount++;
+                                }
+                            } else {
+                                errorMessages.push(result.error || `${file.name} 导入失败`);
+                            }
+                        }
+
+                        if (fileCount > 0 || folderCount > 0) {
+                            let messageText = '';
+                            const parts: string[] = [];
+                            if (folderCount > 0) {
+                                parts.push(`${folderCount} 个文件夹`);
+                            }
+                            if (fileCount > 0) {
+                                parts.push(`${fileCount} 个文件`);
+                            }
+                            messageText = parts.join(' 和 ') + ' 导入成功';
+
+                            if (errorMessages.length > 0) {
+                                message.warning(`${messageText}，${errorMessages.length} 个失败`);
+                            } else {
+                                message.success(messageText);
+                            }
+                            resetTree();
+                        } else if (errorMessages.length > 0) {
+                            message.error(errorMessages[0]);
+                        }
+                    } catch (error) {
+                        console.error('导入文件失败:', error);
+                        message.error('导入文件失败');
+                    }
+                }}
+            >
+                {/* 拖入提示覆盖层 */}
+                {isDraggingOver && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(24, 144, 255, 0.1)',
+                        zIndex: 10,
+                        pointerEvents: 'none'
+                    }}>
+                        <div style={{
+                            padding: '20px 40px',
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                            textAlign: 'center'
+                        }}>
+                            <FolderAddOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: '12px' }} />
+                            <div style={{ fontSize: '16px', color: '#1890ff', fontWeight: 500 }}>
+                                释放以导入文件
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <ConfigProvider theme={{ token: { colorBgContainer: 'transparent' } }}>
                     {initialLoading ? (
                         <Flex style={{ height: '100%' }} align="center" justify="center">

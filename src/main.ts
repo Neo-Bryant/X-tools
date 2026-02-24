@@ -64,6 +64,28 @@ function initializeThreadPool() {
     }
 }
 
+// 递归复制目录的辅助函数
+function copyDirectory(src: string, dest: string) {
+    // 确保目标目录存在
+    fs.mkdirSync(dest, { recursive: true });
+
+    // 读取源目录内容
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+
+        if (entry.isDirectory()) {
+            // 递归复制子目录
+            copyDirectory(srcPath, destPath);
+        } else {
+            // 复制文件
+            fs.copyFileSync(srcPath, destPath);
+        }
+    }
+}
+
 // 注册所有IPC处理程序
 function registerIpcHandlers() {
     // 处理文件夹选择对话框请求
@@ -428,6 +450,55 @@ function registerIpcHandlers() {
         } catch (error) {
             console.error('重命名文件失败:', error);
             return { success: false, error: error instanceof Error ? error.message : '重命名文件失败' };
+        }
+    });
+
+    // 导入文件（从外部拖入）
+    ipcMain.handle('importFile', async (event, sourcePath: string, targetDir: string) => {
+        try {
+            // 检查源文件是否存在
+            if (!fs.existsSync(sourcePath)) {
+                return { success: false, error: '源文件不存在' };
+            }
+
+            // 检查目标目录是否存在
+            if (!fs.existsSync(targetDir)) {
+                return { success: false, error: '目标目录不存在' };
+            }
+
+            const sourceStats = fs.statSync(sourcePath);
+
+            // 如果源文件是目录
+            if (sourceStats.isDirectory()) {
+                // 获取目录名
+                const dirName = path.basename(sourcePath);
+                const targetPath = path.join(targetDir, dirName);
+
+                // 检查目标路径是否已存在
+                if (fs.existsSync(targetPath)) {
+                    return { success: false, error: `目录 "${dirName}" 已存在` };
+                }
+
+                // 复制目录（递归）
+                copyDirectory(sourcePath, targetPath);
+                return { success: true, targetPath };
+            } else {
+                // 文件处理
+                const fileName = path.basename(sourcePath);
+                const targetPath = path.join(targetDir, fileName);
+
+                // 检查目标文件是否已存在
+                if (fs.existsSync(targetPath)) {
+                    return { success: false, error: `文件 "${fileName}" 已存在` };
+                }
+
+                // 复制文件
+                fs.copyFileSync(sourcePath, targetPath);
+                return { success: true, targetPath };
+            }
+        } catch (error) {
+            console.error('导入文件失败:', error);
+            return { success: false, error: error instanceof Error ? error.message : '导入文件失败' };
         }
     });
 
