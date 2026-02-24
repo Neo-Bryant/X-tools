@@ -260,7 +260,16 @@ export const FileTree: React.FC = () => {
                     <span
                         className="one-line"
                         title={node.name}
-                        style={{ cursor: node.isDirectory ? 'pointer' : 'default', display: 'flex', alignItems: 'center' }}
+                        draggable={true}
+                        onDragStart={(e: React.DragEvent<HTMLSpanElement>) => {
+                            // 阻止 Tree 组件的默认拖拽行为
+                            // e.stopPropagation();
+
+                            // 调用 Electron API 实现文件拖出
+                            e.preventDefault();
+                            window.electronAPI.startDrag([node.path]);
+                        }}
+                        style={{ cursor: 'move', display: 'flex', alignItems: 'center' }}
                     >
                         <FileIcon
                             fileName={node.name}
@@ -859,6 +868,8 @@ export const FileTree: React.FC = () => {
                     setIsDraggingOver(false);
 
                     const files = Array.from(e.dataTransfer.files);
+
+                    // 拖入操作：从外部拖入
                     if (files.length === 0) return;
 
                     // 默认拖到当前文件夹根目录

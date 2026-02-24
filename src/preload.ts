@@ -46,6 +46,7 @@ interface ElectronAPI {
     renameFile: (filePath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
     importFile: (sourcePath: string, targetDir: string) => Promise<{ success: boolean; targetPath?: string; error?: string }>;
     getFilePath: (file: File) => string;
+    startDrag: (filePaths: string[]) => Promise<void>;
 
     // === 应用信息 ===
     getAppVersion: () => Promise<string>;
@@ -115,6 +116,7 @@ const electronAPI: ElectronAPI = {
         // 使用 webUtils.getPathForFile 获取 File 对象对应的文件系统路径
         return webUtils.getPathForFile(file) as string;
     },
+    startDrag: (filePaths: string[]) => ipcRenderer.invoke('startDrag', filePaths) as Promise<void>,
 
     // 应用信息
     getAppVersion: () => ipcRenderer.invoke('getAppVersion') as Promise<string>,

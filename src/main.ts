@@ -502,6 +502,44 @@ function registerIpcHandlers() {
         }
     });
 
+    // 开始拖拽文件
+    ipcMain.handle('startDrag', async (event, filePaths: string[]) => {
+        try {
+            if (!filePaths || filePaths.length === 0) {
+                throw new Error('没有提供文件路径');
+            }
+
+            // 使用Electron的webContents.startDrag方法启动拖拽
+            const firstFilePath = filePaths[0];
+            const firstFileStats = fs.statSync(firstFilePath);
+            
+            // 如果是文件，使用文件图标，如果是目录，使用默认图标
+            let dragIcon: Electron.NativeImage | null = null;
+            if (firstFileStats.isFile()) {
+                dragIcon = await app.getFileIcon(firstFilePath, { size: 'small' });
+            } else {
+                // 对于目录，我们可能需要使用默认的文件夹图标
+                // 或者从系统获取
+                dragIcon = await app.getFileIcon(firstFilePath, { size: 'small' });
+            }
+
+            // 实际开始拖拽操作
+            const window = BrowserWindow.fromWebContents(event.sender);
+            if (window) {
+                // startDrag API expects a specific format
+                window.webContents.startDrag({
+                    file: firstFilePath, // 被拖拽的文件路径
+                    icon: dragIcon // 拖拽时显示的图标
+                });
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('启动文件拖拽失败:', error);
+            throw error;
+        }
+    });
+
     // 获取应用版本号
     ipcMain.handle('getAppVersion', async () => {
         return app.getVersion();
