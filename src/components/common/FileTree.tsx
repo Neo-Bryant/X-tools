@@ -308,7 +308,7 @@ export const FileTree: React.FC = () => {
 
                             handleExternalDrop(e as React.DragEvent<HTMLDivElement>, node.isDirectory ? node.path : dirname(node.path));
                         }}
-                        style={{ cursor: 'move', display: 'flex', alignItems: 'center' }}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                         <FileIcon
                             fileName={node.name}
