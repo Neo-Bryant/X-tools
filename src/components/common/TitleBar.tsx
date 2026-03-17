@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 
 // 第三方库导入
 import { Button, Divider, Dropdown, Flex, message, Modal, Tooltip } from "antd";
-import { ArrowLeftOutlined, ArrowRightOutlined, BorderOutlined, CloseOutlined, DownOutlined, FolderOpenOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, RetweetOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ArrowRightOutlined, DownOutlined, FolderOpenOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, RetweetOutlined } from '@ant-design/icons';
 
 // 应用内部导入
 import { useAppContext } from '../../contexts/AppContext';
@@ -11,6 +11,7 @@ import { truncateFolderName } from '../../utils/uiUtils';
 import { removeFolderPath, updateFolderPath } from '../../utils/config';
 import { RecentFolder } from '../../types';
 import { CloseButton } from './CloseButton';
+import { WindowControls } from './WindowControls';
 import { basename, detectFileType } from '../../utils/fileCommonUtil';
 
 export const TitleBar: React.FC = () => {
@@ -144,35 +145,6 @@ export const TitleBar: React.FC = () => {
             window.location.reload();
         }
     };
-
-
-    /**
-     * 处理最小化窗口操作
-     */
-    const handleMinimizeWindow = (): void => {
-        if (window.electronAPI?.minimizeWindow) {
-            window.electronAPI.minimizeWindow();
-        }
-    };
-
-    /**
-     * 处理最大化/还原窗口操作
-     */
-    const handleToggleMaximizeWindow = (): void => {
-        if (window.electronAPI?.toggleMaximizeWindow) {
-            window.electronAPI.toggleMaximizeWindow();
-        }
-    };
-
-    /**
-     * 处理关闭窗口操作
-     */
-    const handleCloseWindow = (): void => {
-        if (window.electronAPI?.closeWindow) {
-            window.electronAPI.closeWindow();
-        }
-    };
-
 
     // 5. 副作用定义
     // 初始化时获取平台信息
@@ -450,53 +422,8 @@ export const TitleBar: React.FC = () => {
                             />
                         </Tooltip>
 
-                        {/* Windows 窗口控制按钮 */}
-                        {!isMac && (
-                            <div style={{ display: 'flex', gap: 0, marginLeft: 8, marginRight: -14 }}>
-                                {/* 最小化按钮 */}
-                                <Tooltip title="最小化">
-                                    <Button
-                                        type="text"
-                                        onClick={handleMinimizeWindow}
-                                        style={{ padding: 0, width: 36, height: 36, borderRadius: 0 }}
-                                    >
-                                        <MinusOutlined />
-                                    </Button>
-                                </Tooltip>
-
-                                {/* 最大化/还原按钮 */}
-                                <Tooltip title="最大化/还原">
-                                    <Button
-                                        type="text"
-                                        onClick={handleToggleMaximizeWindow}
-                                        style={{ padding: 0, width: 36, height: 36, borderRadius: 0 }}
-                                    >
-                                        <BorderOutlined />
-                                    </Button>
-                                </Tooltip>
-
-                                {/* 关闭按钮 */}
-                                <Tooltip title="关闭" placement="left">
-                                    <Button
-                                        type="text"
-                                        onClick={handleCloseWindow}
-                                        style={{ padding: 0, width: 36, height: 36, borderRadius: 0, color: '#000000' }}
-                                        onMouseEnter={(e) => {
-                                            const target = e.currentTarget;
-                                            target.style.backgroundColor = '#ff4d4f';
-                                            target.style.color = '#ffffff';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            const target = e.currentTarget;
-                                            target.style.backgroundColor = 'transparent';
-                                            target.style.color = '#000000';
-                                        }}
-                                    >
-                                        <CloseOutlined />
-                                    </Button>
-                                </Tooltip>
-                            </div>
-                        )}
+                        {/* 窗口控制按钮 */}
+                        {!isMac && <WindowControls />}
                     </div>
                 </Flex>
             )}

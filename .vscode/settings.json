@@ -1,4 +1,6 @@
 {
-    "codingcopilot.enableCompletionLanguage": {},
-    "editor.fontSize": 14
+    // 关闭文件预览模式，让每次打开文件都创建新的标签页
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "workbench.editor.revealIfOpen": true
 }
