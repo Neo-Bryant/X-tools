@@ -34,13 +34,21 @@ const highlightContent = (text: string, query?: string) => {
     }
 };
 
-// 从行内容中提取时间戳
+// 从行内容中提取时间戳（支持 SRT/VTT/ASS 的时间行格式和 LRC 的时间标签格式）
 const extractTimeFromLine = (text: string): number | null => {
     if (isSubtitleTimeLine(text)) {
         const timeRange = extractTimeRange(text);
         if (timeRange && timeRange.startTime >= 0) {
             return timeRange.startTime;
         }
+    }
+    // 支持 LRC 格式：[mm:ss.xx] 或 [mm:ss.xxx]
+    const lrcMatch = text.match(/\[(\d+):(\d+)(?:\.(\d+))?\]/);
+    if (lrcMatch) {
+        const minutes = parseInt(lrcMatch[1], 10);
+        const seconds = parseInt(lrcMatch[2], 10);
+        const ms = lrcMatch[3] ? parseInt(lrcMatch[3].padEnd(3, '0'), 10) : 0;
+        return minutes * 60 + seconds + ms / 1000;
     }
     return null;
 };

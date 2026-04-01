@@ -52,7 +52,7 @@ const FILE_EXTENSIONS = {
     'js','jsx','ts','tsx',
     'py','rb','go','rs','java','kt','swift','c','h','cpp','hpp','cs','php','sh','bat','ps1',
     // 字幕文件
-    'srt','ass','ssa','sub','vtt',
+    'srt','ass','ssa','sub','vtt','lrc',
     // 其他程序文件
     'lua','pl','pm','tcl','sql','r','dart','scala','groovy','gradle',
     // 文档标记语言

@@ -13,7 +13,7 @@ import { getExtension, dirname, nameWithoutExtension, join, isVideoFile, isAudio
  * 支持的字幕文件扩展名
  */
 const SUBTITLE_EXTENSIONS = new Set([
-  'srt', 'ass', 'ssa', 'sub', 'vtt'
+  'srt', 'ass', 'ssa', 'sub', 'vtt', 'lrc'
 ]);
 
 /**
@@ -441,6 +441,70 @@ export function parseSubSubtitle(content: string): SubtitleItem[] {
 }
 
 /**
+ * 解析LRC格式的歌词/字幕文件
+ * LRC 格式每行以时间标签开头，如 [01:30.50] 或 [1:30.500]
+ * 没有显式结束时间，以下一条字幕的开始时间作为当前字幕的结束时间
+ * @param content 字幕文件内容
+ * @returns 解析后的字幕数组
+ */
+export function parseLrcSubtitle(content: string): SubtitleItem[] {
+  const subtitles: SubtitleItem[] = [];
+
+  // 匹配 LRC 时间标签：[mm:ss.xx] 或 [mm:ss.xxx]
+  const timeTagRegex = /\[(\d+):(\d+)(?:\.(\d+))?\]/g;
+
+  const lines = content.split(/\r?\n/);
+
+  for (const line of lines) {
+    const lineSubtitles: { time: number; text: string }[] = [];
+
+    // 提取所有时间标签
+    let match: RegExpExecArray | null;
+    timeTagRegex.lastIndex = 0;
+
+    while ((match = timeTagRegex.exec(line)) !== null) {
+      const minutes = parseInt(match[1], 10);
+      const seconds = parseInt(match[2], 10);
+      const ms = match[3] ? parseInt(match[3].padEnd(3, '0'), 10) : 0;
+      const time = minutes * 60 + seconds + ms / 1000;
+
+      // 文本内容 = 该时间标签之后到下一个时间标签（或行尾）之间的部分
+      const textStart = match.index + match[0].length;
+      // 找到下一个 [ 的位置作为文本结束
+      const nextTagIndex = line.indexOf('[', textStart);
+      const text = (nextTagIndex !== -1 ? line.slice(textStart, nextTagIndex) : line.slice(textStart)).trim();
+
+      lineSubtitles.push({ time, text });
+    }
+
+    for (const sub of lineSubtitles) {
+      subtitles.push({
+        index: 0,
+        startTime: sub.time,
+        endTime: 0,
+        text: sub.text
+      });
+    }
+  }
+
+  // 按开始时间排序
+  subtitles.sort((a, b) => a.startTime - b.startTime);
+
+  // 用下一条字幕的开始时间作为当前字幕的结束时间
+  for (let i = 0; i < subtitles.length; i++) {
+    if (i < subtitles.length - 1) {
+      subtitles[i].endTime = subtitles[i + 1].startTime;
+    } else {
+      // 最后一条字幕，设置一个合理的默认结束时间（10秒后）
+      subtitles[i].endTime = subtitles[i].startTime + 10;
+    }
+    subtitles[i].index = i + 1;
+  }
+
+  return subtitles;
+}
+
+/**
  * 读取并解析字幕文件
  * @param subtitlePath 字幕文件路径
  * @returns 解析后的字幕数组
@@ -462,6 +526,8 @@ export async function loadAndParseSubtitle(subtitlePath: string): Promise<Subtit
         return parseAssSubtitle(content);
       case 'sub':
         return parseSubSubtitle(content);
+      case 'lrc':
+        return parseLrcSubtitle(content);
       case 'txt': {
         // 尝试用多种格式解析txt文件
         let subtitles = parseSrtSubtitle(content);
