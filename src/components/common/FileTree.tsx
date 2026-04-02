@@ -640,7 +640,7 @@ export const FileTree: React.FC = () => {
     };
 
     const handleExternalDrop = async (e: React.DragEvent<HTMLDivElement>, targetFolder: string = currentFolder) => {
-        if(isTreeDragging.current) return;
+        if (isTreeDragging.current) return;
 
         e.preventDefault();
         e.stopPropagation();
@@ -1010,44 +1010,42 @@ export const FileTree: React.FC = () => {
                 }}
                 onDrop={(e) => handleExternalDrop(e as React.DragEvent<HTMLDivElement>, currentFolder)}
             >
-                <ConfigProvider theme={{ token: { colorBgContainer: 'transparent' } }}>
-                    {initialLoading ? (
-                        <Flex style={{ height: '100%' }} align="center" justify="center">
-                            <LoadingOutlined style={{ fontSize: 24 }} spin />
-                        </Flex>
-                    ) : dataNodeList.length > 0 ? (
-                        <Tree<DataNode>
-                            treeData={dataNodeList}
-                            blockNode
-                            showLine
-                            switcherIcon={<DownOutlined />}
-                            selectedKeys={selectedKeys}
-                            expandedKeys={expandedKeys}
-                            loadedKeys={loadedKeys}
-                            onSelect={handleTreeSelect}
-                            onExpand={handleTreeExpand}
-                            loadData={onLoadData}
-                            onLoad={handleLoadedKeys}
-                            onDrop={handleDrop}
-                            onDragStart={handleDragStart}
-                            onDragEnd={handleDragEnd}
-                            onDragEnter={handleTreeDragEnter}
-                            onDragOver={handleTreeDragOver}
-                            onDragLeave={handleTreeDragLeave}
-                            draggable={{ icon: false }}
-                            expandAction="click"
-                            style={{ padding: '8px 0' }}
+                {initialLoading ? (
+                    <Flex style={{ height: '100%' }} align="center" justify="center">
+                        <LoadingOutlined style={{ fontSize: 24 }} spin />
+                    </Flex>
+                ) : dataNodeList.length > 0 ? (
+                    <Tree<DataNode>
+                        treeData={dataNodeList}
+                        blockNode
+                        showLine
+                        switcherIcon={<DownOutlined />}
+                        selectedKeys={selectedKeys}
+                        expandedKeys={expandedKeys}
+                        loadedKeys={loadedKeys}
+                        onSelect={handleTreeSelect}
+                        onExpand={handleTreeExpand}
+                        loadData={onLoadData}
+                        onLoad={handleLoadedKeys}
+                        onDrop={handleDrop}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onDragEnter={handleTreeDragEnter}
+                        onDragOver={handleTreeDragOver}
+                        onDragLeave={handleTreeDragLeave}
+                        draggable={{ icon: false }}
+                        expandAction="click"
+                        style={{ padding: '8px 0',backgroundColor:'rgba(0,0,0,0.01)' }}
+                    />
+                ) : (
+                    <Flex style={{ height: '100%' }} align="center" justify="center">
+                        <Empty
+                            description={
+                                debouncedSearchText.trim() ? "没有找到匹配的文件或文件夹" : "没有可显示的内容"
+                            }
                         />
-                    ) : (
-                        <Flex style={{ height: '100%' }} align="center" justify="center">
-                            <Empty
-                                description={
-                                    debouncedSearchText.trim() ? "没有找到匹配的文件或文件夹" : "没有可显示的内容"
-                                }
-                            />
-                        </Flex>
-                    )}
-                </ConfigProvider>
+                    </Flex>
+                )}
             </div>
         </div>
     );
