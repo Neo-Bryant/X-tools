@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ConfigProvider, message, Tree, Dropdown, type MenuProps, Flex, Space, Button, Input, Tooltip, Empty, Modal } from "antd";
+import { message, Tree, Dropdown, type MenuProps, Flex, Space, Button, Input, Tooltip, Empty, Modal } from "antd";
 import type { DataNode, TreeProps } from 'antd/es/tree';
 import {
     DownOutlined, FileOutlined, FolderOpenOutlined,
     HomeOutlined, FolderAddOutlined, FileAddOutlined,
     ExpandOutlined, CompressOutlined, SearchOutlined,
-    AimOutlined, CloseOutlined,
+    AimOutlined, CloseOutlined, InfoCircleOutlined,
     LoadingOutlined
 } from '@ant-design/icons';
 import { FileNode } from '../../types';
 import { useAppContext } from '../../contexts/AppContext';
 import { FileIcon } from './FileIcon';
 import { storage } from '../../utils/storage';
-import { basename, dirname } from '../../utils/fileCommonUtil';
+import { basename, dirname, isTextFile } from '../../utils/fileCommonUtil';
 import { highlightText } from '../../utils/highlight';
 import { EditableFilePath } from './EditableFilePath';
 
@@ -163,6 +163,44 @@ export const FileTree: React.FC = () => {
             // 添加分隔线
             items.push({
                 key: 'divider-2',
+                type: 'divider'
+            });
+        }
+
+        // 添加转码为 UTF-8 功能（仅对文本文件有效）
+        if (!node.isDirectory && isTextFile(node.path)) {
+            items.push({
+                key: 'convert-to-utf8',
+                icon: <FileOutlined />,
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <span>转码为 UTF-8</span>
+                        <Tooltip title="将非 UTF-8 文本文件转为 UTF-8 编码，并保留原文件">
+                            <InfoCircleOutlined style={{ color: 'gray', fontSize: '12px', marginLeft: '8px' }} />
+                        </Tooltip>
+                    </div>
+                ),
+                onClick: async (e) => {
+                    e.domEvent.stopPropagation();
+                    try {
+                        const success = await window.electronAPI.convertToUtf8(node.path);
+                        if (success) {
+                            message.success('文件已成功转码为 UTF-8 编码');
+                            // 刷新文件树以显示新文件
+                            resetTree();
+                        } else {
+                            message.error('转码失败，请重试');
+                        }
+                    } catch (error) {
+                        console.error('转码文件失败:', error);
+                        message.error('转码失败');
+                    }
+                }
+            });
+
+            // 添加分隔线
+            items.push({
+                key: 'divider-convert',
                 type: 'divider'
             });
         }
@@ -1035,7 +1073,7 @@ export const FileTree: React.FC = () => {
                         onDragLeave={handleTreeDragLeave}
                         draggable={{ icon: false }}
                         expandAction="click"
-                        style={{ padding: '8px 0',backgroundColor:'rgba(0,0,0,0.01)' }}
+                        style={{ padding: '8px 0', backgroundColor: 'rgba(0,0,0,0.01)' }}
                     />
                 ) : (
                     <Flex style={{ height: '100%' }} align="center" justify="center">

@@ -47,6 +47,7 @@ interface ElectronAPI {
     importFile: (sourcePath: string, targetDir: string) => Promise<{ success: boolean; targetPath?: string; error?: string }>;
     getFilePath: (file: File) => string;
     startDrag: (filePaths: string[]) => Promise<void>;
+    convertToUtf8: (filePath: string) => Promise<boolean>;
 
     // === 应用信息 ===
     getAppVersion: () => Promise<string>;
@@ -117,6 +118,7 @@ const electronAPI: ElectronAPI = {
         return webUtils.getPathForFile(file) as string;
     },
     startDrag: (filePaths: string[]) => ipcRenderer.invoke('startDrag', filePaths) as Promise<void>,
+    convertToUtf8: (filePath: string) => ipcRenderer.invoke('convertToUtf8', filePath) as Promise<boolean>,
 
     // 应用信息
     getAppVersion: () => ipcRenderer.invoke('getAppVersion') as Promise<string>,

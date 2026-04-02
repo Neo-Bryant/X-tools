@@ -3,6 +3,8 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import chardet from 'chardet';
+import iconv from 'iconv-lite';
 import { getDirectoryChildren, getFileInfo, getFileTree, readFileText, writeFileText } from './utils/fileLocalUtil';
 import { readFileLines } from './utils/fileCacheUtil';
 import { loadConfig, saveConfig } from './utils/configManager';
@@ -678,6 +680,81 @@ function registerIpcHandlers() {
         } catch (error) {
             console.error('打开终端失败:', error);
             return { success: false, error: (error as Error).message };
+        }
+    });
+
+    // 转码文件为 UTF-8 编码
+    ipcMain.handle('convertToUtf8', async (event, filePath: string) => {
+        try {
+            // 检查文件是否存在
+            if (!fs.existsSync(filePath)) {
+                return false;
+            }
+
+            // 检查是否为文件（不是目录）
+            const stats = fs.statSync(filePath);
+            if (!stats.isFile()) {
+                return false;
+            }
+
+            // 读取文件内容并检测编码
+            const buffer = fs.readFileSync(filePath);
+            
+            // 使用chardet检测文件编码
+            const detectedEncoding = chardet.detect(buffer);
+            console.log(`检测到文件编码: ${detectedEncoding || 'unknown'}，路径: ${filePath}`);
+
+            // 检查是否已经是UTF-8编码
+            const isUtf8 = detectedEncoding === 'UTF-8' || detectedEncoding === 'UTF-8-SIG';
+            const hasUtf8Bom = buffer.length >= 3 && buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF;
+            
+            if (isUtf8 || hasUtf8Bom) {
+                console.log(`文件 ${filePath} 已经是 UTF-8 编码`);
+                return true;
+            }
+
+            // 使用iconv-lite进行编码转换
+            let content: string;
+            if (detectedEncoding && iconv.encodingExists(detectedEncoding)) {
+                // 使用检测到的编码进行解码
+                content = iconv.decode(buffer, detectedEncoding);
+            } else {
+                // 尝试直接使用utf-8
+                try {
+                    content = buffer.toString('utf-8');
+                } catch (e) {
+                    // 如果utf-8解码失败，尝试使用gbk作为备选
+                    content = iconv.decode(buffer, 'gbk');
+                }
+            }
+
+            // 生成新文件名（在原文件名后添加 _utf8）
+            const dirName = path.dirname(filePath);
+            const baseName = path.basename(filePath, path.extname(filePath));
+            const extName = path.extname(filePath);
+            const newFilePath = path.join(dirName, `${baseName}_utf8${extName}`);
+
+            // 检查新文件是否已存在
+            if (fs.existsSync(newFilePath)) {
+                // 如果已存在，询问是否覆盖（这里简单返回false，前端可以处理覆盖逻辑）
+                console.log(`目标文件已存在: ${newFilePath}`);
+                return false;
+            }
+
+            // 写入UTF-8编码的新文件（带BOM）
+            const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
+            const contentBuffer = Buffer.from(content, 'utf8');
+            const finalBuffer = Buffer.concat([bom, contentBuffer]);
+            
+            fs.writeFileSync(newFilePath, finalBuffer);
+            
+            console.log(`文件已成功转码为 UTF-8: ${filePath} -> ${newFilePath}`);
+            console.log(`原编码: ${detectedEncoding || 'unknown'}, 新编码: UTF-8`);
+            
+            return true;
+        } catch (error) {
+            console.error('转码文件失败:', error);
+            return false;
         }
     });
 
